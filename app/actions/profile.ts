@@ -25,7 +25,7 @@ export async function uploadResumePdf(formData: FormData): Promise<ActionResult>
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false, error: "No file received" };
   if (file.type !== "application/pdf") return { ok: false, error: "Only PDF files are supported here — use the text tab otherwise" };
-  if (file.size > 8 * 1024 * 1024) return { ok: false, error: "PDF is larger than 8 MB" };
+  if (file.size > 2 * 1024 * 1024) return { ok: false, error: "PDF is larger than 2 MB" };
 
   const bytes = Buffer.from(await file.arrayBuffer());
   let text: string;

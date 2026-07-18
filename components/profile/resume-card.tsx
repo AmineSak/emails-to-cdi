@@ -105,7 +105,7 @@ export function ResumeCard({
                 ) : (
                   <FileUp className="size-5" />
                 )}
-                {pending ? "Parsing PDF…" : "Click to upload your resume (PDF, max 8 MB)"}
+                {pending ? "Parsing PDF…" : "Click to upload your resume (PDF, max 2 MB)"}
               </button>
             )}
           </TabsContent>

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { buildMime, findReplyInThread, getGmail, sendMessage } from "@/lib/gmail";
+import { buildMime, findReplyInThread, getGmail, resumeAttachment, sendMessage } from "@/lib/gmail";
 import { getProfile, getSettings } from "@/lib/singletons";
 
 const BATCH_PER_DRAIN = 5;
@@ -62,14 +62,7 @@ export async function processDueJobs(): Promise<DrainResult> {
             to: job.lead.email,
             subject: job.draft.subject,
             text: job.draft.body,
-            attachment:
-              profile.resumePdf && profile.resumeFileName
-                ? {
-                    filename: profile.resumeFileName,
-                    contentType: "application/pdf",
-                    data: Buffer.from(profile.resumePdf),
-                  }
-                : undefined,
+            attachment: resumeAttachment(profile),
           });
           const { id, threadId } = await sendMessage(auth.gmail, raw);
           const now = new Date();

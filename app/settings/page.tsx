@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { GmailCard } from "@/components/settings/gmail-card";
 import { SendSettingsForm } from "@/components/settings/send-settings-form";
 import { SettingsToasts } from "@/components/settings/settings-toasts";
+import { DevTestEmailCard } from "@/components/settings/dev-test-email";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,9 @@ export default async function SettingsPage() {
           }}
           geminiEnvReady={envReady.gemini}
         />
+        {process.env.NODE_ENV !== "production" && (
+          <DevTestEmailCard gmailConnected={!!gmail} gmailEmail={gmail?.email ?? null} />
+        )}
       </div>
     </div>
   );
