@@ -47,7 +47,7 @@ Next.js (App Router, TypeScript) · Tailwind CSS + shadcn/ui · PostgreSQL via P
 
 - Nothing is ever sent without an editable `EmailDraft` you can review first.
 - "Send" queues jobs in Postgres, spaced by the configured delay (default 45 s + jitter) with a **server-side** daily cap (default 50).
-- The queue drains while any app tab is open (in-app poller) and via Vercel Cron (`vercel.json`, every 5 min — requires a Vercel plan with cron support; set `CRON_SECRET` to protect the endpoint).
+- The queue drains while any app tab is open (in-app poller, every 20s) and via Vercel Cron as a fallback for when no tab is open (`vercel.json`; set `CRON_SECRET` to protect the endpoint). Vercel's **Hobby** plan only allows daily cron schedules, so it's set to run once a day (08:00 UTC) — on a **Pro** plan you can tighten `vercel.json`'s schedule (e.g. `*/5 * * * *`) for near-real-time draining even with no tab open.
 - Your uploaded resume PDF is attached to every send.
 - "Sync replies" checks the Gmail threads of sent emails; replies flip the lead to `REPLIED` (bounces to `BOUNCED`). Every status can also be set manually.
 
