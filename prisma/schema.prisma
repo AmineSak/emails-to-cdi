@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NOT_CONTACTED
+  DRAFTED
+  QUEUED
+  SENT
+  REPLIED
+  INTERVIEW
+  REJECTED
+  NO_RESPONSE
+  BOUNCED
+}
+
+enum SendJobStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+model Lead {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  firstName       String     @default("")
+  lastName        String     @default("")
+  jobTitle        String     @default("")
+  companyName     String     @default("")
+  companyIndustry String     @default("")
+  linkedinUrl     String     @default("")
+  source          String     @default("")
+  status          LeadStatus @default(NOT_CONTACTED)
+  notes           String     @default("")
+  lastContactedAt DateTime?
+  lastRepliedAt   DateTime?
+  gmailThreadId   String?
+  gmailMessageId  String?
+  replySnippet    String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  draft    EmailDraft?
+  sendJobs SendJob[]
+
+  @@index([status])
+  @@index([companyName])
+}
+
+model EmailDraft {
+  id          String    @id @default(cuid())
+  leadId      String    @unique
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  subject     String
+  body        String
+  model       String
+  generatedAt DateTime  @default(now())
+  sentAt      DateTime?
+
+  sendJobs SendJob[]
+}
+
+model ResumeProfile {
+  id             String   @id @default("singleton")
+  rawText        String   @default("")
+  resumeFileName String?
+  resumePdf      Bytes?
+  targetRoles    String   @default("")
+  industries     String   @default("")
+  locations      String   @default("")
+  tone           String   @default("formel")
+  achievements   String   @default("")
+  availability   String   @default("")
+  extraContext   String   @default("")
+  updatedAt      DateTime @updatedAt
+}
+
+model CsvImportBatch {
+  id            String   @id @default(cuid())
+  filename      String
+  rowCount      Int
+  importedCount Int      @default(0)
+  skippedCount  Int      @default(0)
+  importedAt    DateTime @default(now())
+}
+
+model GmailAccount {
+  id              String   @id @default("singleton")
+  email           String
+  refreshTokenEnc String
+  updatedAt       DateTime @updatedAt
+}
+
+model AppSettings {
+  id               String   @id @default("singleton")
+  sendDelaySeconds Int      @default(45)
+  dailySendCap     Int      @default(50)
+  geminiModel      String   @default("gemini-2.5-flash")
+  updatedAt        DateTime @updatedAt
+}
+
+model SendJob {
+  id          String        @id @default(cuid())
+  leadId      String
+  lead        Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  draftId     String
+  draft       EmailDraft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  status      SendJobStatus @default(PENDING)
+  scheduledAt DateTime
+  attempts    Int           @default(0)
+  error       String?
+  createdAt   DateTime      @default(now())
+  sentAt      DateTime?
+
+  @@index([status, scheduledAt])
+}
