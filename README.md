@@ -6,7 +6,7 @@ Single-user tool — Google OAuth is only used to authorize Gmail access for you
 
 ## Stack
 
-Next.js (App Router, TypeScript) · Tailwind CSS + shadcn/ui · PostgreSQL via Prisma (Neon/Supabase) · Gmail API · Gemini API · papaparse · pdf-parse · Vercel
+Next.js (App Router, TypeScript) · Tailwind CSS + shadcn/ui · PostgreSQL via Prisma on Supabase · Gmail API · Gemini API · papaparse · pdf-parse · Vercel
 
 ## Setup
 
@@ -15,10 +15,14 @@ Next.js (App Router, TypeScript) · Tailwind CSS + shadcn/ui · PostgreSQL via P
    ```bash
    npm install
    cp .env.example .env   # then fill in the values
-   npx prisma migrate deploy   # or `npx prisma migrate dev` in development
+   npx prisma migrate deploy
    ```
 
-   `DATABASE_URL` — a Postgres connection string (Neon or Supabase work well).
+   Database is Postgres hosted on [Supabase](https://supabase.com). Grab both connection
+   strings from your project's **Settings → Database** page:
+   - `DATABASE_URL` — the pooled connection (port 6543, `?pgbouncer=true`), used at runtime.
+     Required because serverless functions (Vercel) can exhaust direct Postgres connections.
+   - `DIRECT_URL` — the direct connection (port 5432), used only by `prisma migrate`.
 
 2. **Google OAuth (Gmail)**
 
@@ -54,8 +58,8 @@ Next.js (App Router, TypeScript) · Tailwind CSS + shadcn/ui · PostgreSQL via P
 ## Deploying to Vercel
 
 1. Push the repo and import it in Vercel.
-2. Set all env vars from `.env.example` (use the production redirect URI for `GOOGLE_REDIRECT_URI`).
-3. `npx prisma migrate deploy` runs against the production DB (add it as a build step or run once locally pointing at the prod `DATABASE_URL`).
+2. Set all env vars from `.env.example` (use the production redirect URI for `GOOGLE_REDIRECT_URI`; `DATABASE_URL`/`DIRECT_URL` are the same Supabase connection strings used locally — one project serves both).
+3. `npx prisma migrate deploy` runs migrations against Supabase (run it locally once, pointed at the same `DIRECT_URL`, before or after the first deploy).
 4. **Important:** the app has no login of its own. Enable [Vercel Deployment Protection](https://vercel.com/docs/security/deployment-protection) (password/SSO) so the deployment isn't publicly reachable.
 
 ## Privacy
