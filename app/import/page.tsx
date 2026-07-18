@@ -4,10 +4,14 @@ import { ImportWizard } from "@/components/import/import-wizard";
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  const batches = await prisma.csvImportBatch.findMany({
-    orderBy: { importedAt: "desc" },
-    take: 10,
-  });
+  const [batches, leadCounts] = await Promise.all([
+    prisma.csvImportBatch.findMany({
+      orderBy: { importedAt: "desc" },
+      take: 10,
+    }),
+    prisma.lead.groupBy({ by: ["source"], _count: { _all: true } }),
+  ]);
+  const leadCountBySource = new Map(leadCounts.map((c) => [c.source, c._count._all]));
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-8">
@@ -27,6 +31,7 @@ export default async function ImportPage() {
           importedCount: b.importedCount,
           skippedCount: b.skippedCount,
           importedAt: b.importedAt.toISOString(),
+          currentLeadCount: leadCountBySource.get(b.filename) ?? 0,
         }))}
       />
     </div>

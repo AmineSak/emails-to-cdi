@@ -59,6 +59,7 @@ export function Dashboard({ leads, meta }: { leads: LeadDTO[]; meta: DashboardMe
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [sendCandidates, setSendCandidates] = useState<string[] | null>(null);
+  const [deleteCandidates, setDeleteCandidates] = useState<string[] | null>(null);
   const [genProgress, setGenProgress] = useState<{ done: number; total: number } | null>(null);
   const genCancelled = useRef(false);
   const [syncPending, startSync] = useTransition();
@@ -137,6 +138,19 @@ export function Dashboard({ leads, meta }: { leads: LeadDTO[]; meta: DashboardMe
         toast.success(`${res.queued} email${(res.queued ?? 0) > 1 ? "s" : ""} queued`, {
           description: res.capNote ?? "Sends are spaced out automatically — keep a tab open or let the cron drain the queue.",
         });
+        setRowSelection({});
+        router.refresh();
+      } else toast.error(res.error);
+    });
+  }
+
+  function confirmDelete() {
+    const ids = deleteCandidates ?? [];
+    setDeleteCandidates(null);
+    startDelete(async () => {
+      const res = await deleteLeads(ids);
+      if (res.ok) {
+        toast.success(res.message);
         setRowSelection({});
         router.refresh();
       } else toast.error(res.error);
@@ -351,18 +365,10 @@ export function Dashboard({ leads, meta }: { leads: LeadDTO[]; meta: DashboardMe
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
                 disabled={deletePending}
-                onClick={() =>
-                  startDelete(async () => {
-                    const res = await deleteLeads(selectedIds);
-                    if (res.ok) {
-                      toast.success(res.message);
-                      setRowSelection({});
-                      router.refresh();
-                    } else toast.error(res.error);
-                  })
-                }
+                onClick={() => setDeleteCandidates(selectedIds)}
               >
-                <Trash2 className="size-3.5" />
+                {deletePending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                Delete
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setRowSelection({})}>
                 <X className="size-3.5" />
@@ -399,6 +405,33 @@ export function Dashboard({ leads, meta }: { leads: LeadDTO[]; meta: DashboardMe
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSend}>
               <Send className="size-3.5" /> Queue for sending
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteCandidates !== null}
+        onOpenChange={(open) => !open && setDeleteCandidates(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteCandidates?.length ?? 0} lead{(deleteCandidates?.length ?? 0) > 1 ? "s" : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the selected lead{(deleteCandidates?.length ?? 0) > 1 ? "s" : ""},
+              along with their drafts and notes. Emails already sent will remain in your Gmail — only
+              records in this app are removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              <Trash2 className="size-3.5" /> Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

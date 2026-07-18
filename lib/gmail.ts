@@ -1,4 +1,5 @@
 import { google, type gmail_v1 } from "googleapis";
+import type { ResumeProfile } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { getGmailAccount } from "@/lib/singletons";
 
@@ -85,6 +86,20 @@ export function buildMime(opts: {
     ].join("\r\n");
   }
   return Buffer.from(mime, "utf8").toString("base64url");
+}
+
+export type ResumeAttachment = { filename: string; contentType: string; data: Buffer };
+
+/** Builds the resume attachment for an outgoing email, or undefined if none is on file. */
+export function resumeAttachment(
+  profile: Pick<ResumeProfile, "resumePdf" | "resumeFileName">,
+): ResumeAttachment | undefined {
+  if (!profile.resumePdf || !profile.resumeFileName) return undefined;
+  return {
+    filename: profile.resumeFileName,
+    contentType: "application/pdf",
+    data: Buffer.from(profile.resumePdf),
+  };
 }
 
 export async function sendMessage(

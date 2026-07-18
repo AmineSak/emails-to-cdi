@@ -71,3 +71,30 @@ export async function importLeads(
     summary: { imported: count, duplicates: valid.length - count, invalid },
   };
 }
+
+/**
+ * Deletes an import batch's history entry and every lead still tagged with
+ * that filename (their drafts/send jobs cascade). Leads are only linked to a
+ * batch by filename — re-importing the same filename later would be caught
+ * by the same deletion, which is the intended, if coarse, behavior.
+ */
+export async function deleteImportBatch(
+  batchId: string,
+): Promise<ActionResult & { deletedLeads?: number }> {
+  const batch = await prisma.csvImportBatch.findUnique({ where: { id: batchId } });
+  if (!batch) return { ok: false, error: "Import batch not found" };
+
+  const deletedLeads = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.lead.deleteMany({ where: { source: batch.filename } });
+    await tx.csvImportBatch.delete({ where: { id: batchId } });
+    return count;
+  });
+
+  revalidatePath("/import");
+  revalidatePath("/");
+  return {
+    ok: true,
+    deletedLeads,
+    message: `Deleted "${batch.filename}" and ${deletedLeads} lead${deletedLeads === 1 ? "" : "s"}`,
+  };
+}

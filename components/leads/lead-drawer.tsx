@@ -169,6 +169,7 @@ function DrawerBody({
         <Separator />
 
         <DraftSection
+          key={lead.draft?.generatedAt ?? "no-draft"}
           lead={lead}
           gmailConnected={gmailConnected}
           onRequestSend={onRequestSend}

@@ -4,7 +4,17 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { ArrowRight, FileSpreadsheet, Loader2, RotateCcw } from "lucide-react";
+import { ArrowRight, FileSpreadsheet, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { importLeads, type ImportRow } from "@/app/actions/import";
+import { deleteImportBatch, importLeads, type ImportRow } from "@/app/actions/import";
 
 type Field = keyof ImportRow;
 
@@ -61,6 +71,7 @@ type Batch = {
   importedCount: number;
   skippedCount: number;
   importedAt: string;
+  currentLeadCount: number;
 };
 
 export function ImportWizard({ history }: { history: Batch[] }) {
@@ -71,6 +82,21 @@ export function ImportWizard({ history }: { history: Batch[] }) {
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Record<Field, string>>(() => guessMapping([]));
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<Batch | null>(null);
+  const [deletePending, startDeleteTransition] = useTransition();
+
+  function confirmDeleteBatch() {
+    const batch = deleteTarget;
+    if (!batch) return;
+    setDeleteTarget(null);
+    startDeleteTransition(async () => {
+      const res = await deleteImportBatch(batch.id);
+      if (res.ok) {
+        toast.success(res.message);
+        router.refresh();
+      } else toast.error(res.error);
+    });
+  }
 
   function parseFile(file: File) {
     Papa.parse<Record<string, string>>(file, {
@@ -170,7 +196,9 @@ export function ImportWizard({ history }: { history: Batch[] }) {
                     <TableHead className="text-right">Rows</TableHead>
                     <TableHead className="text-right">Imported</TableHead>
                     <TableHead className="text-right">Skipped</TableHead>
+                    <TableHead className="text-right">Still in dashboard</TableHead>
                     <TableHead className="text-right">Date</TableHead>
+                    <TableHead className="w-9" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -180,8 +208,21 @@ export function ImportWizard({ history }: { history: Batch[] }) {
                       <TableCell className="text-right font-mono text-xs">{b.rowCount}</TableCell>
                       <TableCell className="text-right font-mono text-xs">{b.importedCount}</TableCell>
                       <TableCell className="text-right font-mono text-xs">{b.skippedCount}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{b.currentLeadCount}</TableCell>
                       <TableCell className="text-right font-mono text-xs">
                         {new Date(b.importedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deletePending}
+                          onClick={() => setDeleteTarget(b)}
+                          aria-label={`Delete import ${b.filename}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -190,6 +231,31 @@ export function ImportWizard({ history }: { history: Batch[] }) {
             </CardContent>
           </Card>
         )}
+
+        <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this import?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes{" "}
+                <span className="font-mono text-foreground">{deleteTarget?.currentLeadCount ?? 0}</span>{" "}
+                lead{(deleteTarget?.currentLeadCount ?? 0) === 1 ? "" : "s"} still in the dashboard from{" "}
+                <span className="font-mono text-foreground">{deleteTarget?.filename}</span>, along with
+                their drafts and notes. Emails already sent will remain in your Gmail — only records
+                in this app are removed. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={confirmDeleteBatch}
+              >
+                <Trash2 className="size-3.5" /> Delete import
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
