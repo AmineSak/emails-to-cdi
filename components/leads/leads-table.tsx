@@ -71,7 +71,6 @@ export function LeadsTable({
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(v) => row.toggleSelected(!!v)}
-            onClick={(e) => e.stopPropagation()}
             aria-label="Select row"
           />
         ),
@@ -212,7 +211,14 @@ export function LeadsTable({
                 onClick={() => onOpenLead(row.original.id)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell
+                    key={cell.id}
+                    // The select checkbox renders a hidden native <input> alongside the
+                    // visible one for form semantics; it dispatches its own bubbling click
+                    // that a stopPropagation on the checkbox itself doesn't catch. Stopping
+                    // it here, on the cell, catches it regardless of that internal detail.
+                    onClick={cell.column.id === "select" ? (e) => e.stopPropagation() : undefined}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
